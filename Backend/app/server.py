@@ -37,7 +37,7 @@ def fetch_content(url):
 
 # Summarize content with Gemini
 def summarize_with_gemini(content, length):
-    prompt = f"Summarize the following content to {length} length: {content[:5000]}"
+    prompt = f"Summarize the following content to {length} length: {content[:5000]} and provide in well formated display and also underline the keywords and if needed make text in paragraphs"
     response = chat_session.send_message(prompt)
     return response.text
 
