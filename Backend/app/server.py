@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from flask import Flask, request, jsonify
 import os
+import base64
 import google.generativeai as genai
 
 app = Flask(__name__)
@@ -64,6 +65,36 @@ def summarize():
         return jsonify({"error": f"Failed to summarize content: {e}"}), 500
 
     return jsonify({"summary": summary})
+
+@app.route("/screenshot", methods=["POST"])
+def process_screenshot():
+    data = request.get_json()
+    image_base64 = data.get("image")
+
+    if not image_base64:
+        return jsonify({"error": "Image is required"}), 400
+
+    try:
+        # Decode the base64 image
+        image_data = base64.b64decode(image_base64)
+
+        # Send image data to Gemini for processing
+        prompt = "Describe the contents of this image."
+        response = model.generate_content([{
+            "mime_type": "image/jpeg", 
+            "data": image_data
+        }, prompt])
+
+        # Debug: Log the response
+        print("Model response:", response)
+
+        # Assuming response contains 'text' field, return it
+        return jsonify({"text": response.text})
+    except Exception as e:
+        print("Error processing screenshot:", e)  # Log error for debugging
+        return jsonify({"error": str(e)}), 500
+
+    
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

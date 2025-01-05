@@ -3,7 +3,7 @@
   "name": "SummarEase",
   "version": "1.0.0",
   "description": "A web summarizer with screenshot feature.",
-  "permissions": ["activeTab", "tabs", "scripting"],
+  "permissions": ["activeTab", "tabs", "scripting","side_Panel"],
   "host_permissions": [
     "http://*/*",
     "https://*/*"
@@ -13,7 +13,10 @@
     "extension_pages": "script-src 'self'; object-src 'self';"
   },
 
-  "action": {
-    "default_popup": "index.html"
+
+  "side_panel":{
+    "default_path": "index.html"
   }
+
+
 }

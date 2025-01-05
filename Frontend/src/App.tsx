@@ -15,10 +15,10 @@ export default function App() {
     chrome.tabs.captureVisibleTab({ format: 'png' }, (screenshotUrl) => {
       if (screenshotUrl) {
         setScreenshot(screenshotUrl)
-        const link = document.createElement('a')
-        link.href = screenshotUrl
-        link.download = 'screenshot.png'
-        link.click()
+        // const link = document.createElement('a')
+        // link.href = screenshotUrl
+        // link.download = 'screenshot.png'
+        // link.click()
       } else {
         console.error('Failed to capture screenshot.')
       }
@@ -35,6 +35,32 @@ export default function App() {
         }
       })
     })
+  }
+  const handleScreenshot = async () => {
+    try {
+      setLoading(true)
+      if (!screenshot) {
+        console.error('No screenshot available.')
+        return
+      }
+      const base64Image = screenshot.split(',')[1]
+      const response = await fetch('http://localhost:5000/screenshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image }),
+      })
+      const data = await response.json()
+      console.log('Text extracted from the image:', data.text)
+      if (data) {
+        setExtractedText(data.text)
+      } else {
+        setExtractedText('no data available')
+      }
+    } catch (error) {
+      console.error('Error sending screenshot:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSummarize = async () => {
@@ -73,6 +99,9 @@ export default function App() {
         </button>
         <button onClick={takeScreenshot} className="button" style={{ marginLeft: '10px' }}>
           Capture Screenshot
+        </button>
+        <button onClick={handleScreenshot} className="button">
+          Extract Text
         </button>
       </div>
       <div className="output">
