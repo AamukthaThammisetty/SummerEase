@@ -8,6 +8,23 @@ export default function App() {
   const [length, setLength] = useState<string>('short')
   const [url, setUrl] = useState<string>('')
   const [loading, setLoading] = useState<boolean>(false)
+  const [extractedText, setExtractedText] = useState<string>('')
+  const [screenshot, setScreenshot] = useState<string | null>(null)
+
+  const takeScreenshot = () => {
+    chrome.tabs.captureVisibleTab({ format: 'png' }, (screenshotUrl) => {
+      if (screenshotUrl) {
+        setScreenshot(screenshotUrl)
+        const link = document.createElement('a')
+        link.href = screenshotUrl
+        link.download = 'screenshot.png'
+        link.click()
+      } else {
+        console.error('Failed to capture screenshot.')
+      }
+    })
+  }
+
   const getActiveTabUrl = async (): Promise<string> => {
     return new Promise((resolve, reject) => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -28,10 +45,7 @@ export default function App() {
       const response = await fetch('http://localhost:5000/summarize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: activeTabUrl,
-          length,
-        }),
+        body: JSON.stringify({ url: activeTabUrl, length }),
       })
       const data: { summary: string } = await response.json()
       setSummary(data.summary)
@@ -57,6 +71,9 @@ export default function App() {
         <button onClick={handleSummarize} className="button">
           Summarize
         </button>
+        <button onClick={takeScreenshot} className="button" style={{ marginLeft: '10px' }}>
+          Capture Screenshot
+        </button>
       </div>
       <div className="output">
         <p>
@@ -71,6 +88,24 @@ export default function App() {
             <strong>Summary:</strong>
             <ReactMarkdown rehypePlugins={[rehypeRaw]}>{summary}</ReactMarkdown>
           </p>
+        )}
+      </div>
+      <div className="output">
+        {extractedText && (
+          <p>
+            <strong>Extracted Text:</strong>
+            <ReactMarkdown rehypePlugins={[rehypeRaw]}>{extractedText}</ReactMarkdown>
+          </p>
+        )}
+      </div>
+      <div className="output">
+        {screenshot && (
+          <>
+            <p>
+              <strong>Captured Screenshot:</strong>
+            </p>
+            <img src={screenshot} alt="Captured Screenshot" style={{ maxWidth: '100%', border: '1px solid #ccc' }} />
+          </>
         )}
       </div>
     </div>

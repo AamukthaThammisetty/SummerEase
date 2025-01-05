@@ -1,21 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "My Vite Extension",
+  "name": "SummarEase",
   "version": "1.0.0",
-  "description": "A basic example extension with only required keys",
-  "icons": {
-    "48": "icon-48.png"
-  },
-  "action": {
-    "default_popup": "index.html"
-  },
-  "permissions": [
-    "scripting",
-    "activeTab",
-    "tabs"
-  ],
+  "description": "A web summarizer with screenshot feature.",
+  "permissions": ["activeTab", "tabs", "scripting"],
   "host_permissions": [
     "http://*/*",
     "https://*/*"
-  ]
+  ],
+ 
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
+
+  "action": {
+    "default_popup": "index.html"
+  }
 }
