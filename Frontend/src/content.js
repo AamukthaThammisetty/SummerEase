@@ -9,3 +9,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ text: extractText() });
   }
 });
+
+chrome.action.onClicked.addListener((tab) => {
+
+  chrome.sidePanel.setOptions({
+    path: "sidepanel.html",
+    tabId: tab.id
+  }).then(() => {
+    console.log("Side panel opened.");
+  }).catch((error) => {
+    console.error("Error opening side panel:", error);
+  });
+});

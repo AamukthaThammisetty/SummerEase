@@ -12,17 +12,24 @@ export default function App() {
   const [screenshot, setScreenshot] = useState<string | null>(null)
 
   const takeScreenshot = () => {
-    chrome.tabs.captureVisibleTab({ format: 'png' }, (screenshotUrl) => {
-      if (screenshotUrl) {
-        setScreenshot(screenshotUrl)
-        // const link = document.createElement('a')
-        // link.href = screenshotUrl
-        // link.download = 'screenshot.png'
-        // link.click()
-      } else {
-        console.error('Failed to capture screenshot.')
+    // @ts-ignore
+    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (screenshotUrl, error) => {
+      if (error) {
+        console.error('Failed to capture screenshot:', error);
+        return;
       }
-    })
+
+      if (screenshotUrl) {
+        setScreenshot(screenshotUrl);
+        // Optionally download the screenshot
+        // const link = document.createElement('a');
+        // link.href = screenshotUrl;
+        // link.download = 'screenshot.png';
+        // link.click();
+      } else {
+        console.log('Screenshot URL is empty.');
+      }
+    });
   }
 
   const getActiveTabUrl = async (): Promise<string> => {
