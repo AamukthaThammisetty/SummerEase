@@ -5,7 +5,12 @@ import os
 import base64
 import google.generativeai as genai
 
+from flask_cors import CORS 
+
 app = Flask(__name__)
+
+
+
 
 # Configure Generative AI API
 api_key = "AIzaSyDY3HG8xMfPLcOSgIpiEzE029G1Govzi-4"
@@ -97,4 +102,5 @@ def process_screenshot():
     
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    CORS(app)
+    app.run(debug=True, port=8080)

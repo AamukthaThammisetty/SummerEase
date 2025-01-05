@@ -1,149 +1,186 @@
-import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import { TailSpin } from 'react-loader-spinner'
-import rehypeRaw from 'rehype-raw'
+import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
+import axios from 'axios';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./components/ui/select";
+import { Button } from "./components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
+import { Loader2, FileText, Camera, FileSearch } from "lucide-react";
 
 export default function App() {
-  const [summary, setSummary] = useState<string>('')
-  const [length, setLength] = useState<string>('short')
-  const [url, setUrl] = useState<string>('')
-  const [loading, setLoading] = useState<boolean>(false)
-  const [extractedText, setExtractedText] = useState<string>('')
-  const [screenshot, setScreenshot] = useState<string | null>(null)
+  const [summary, setSummary] = useState('');
+  const [length, setLength] = useState('short');
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [extractedText, setExtractedText] = useState('');
+  const [screenshot, setScreenshot] = useState(null);
+  const [activeTab, setActiveTab] = useState('summary');
 
   const takeScreenshot = () => {
-    // @ts-ignore
-    chrome.tabs.captureVisibleTab(null, { format: 'png' }, (screenshotUrl, error) => {
-      if (error) {
-        console.error('Failed to capture screenshot:', error);
-        return;
-      }
-
-      if (screenshotUrl) {
-        setScreenshot(screenshotUrl);
-        // Optionally download the screenshot
-        // const link = document.createElement('a');
-        // link.href = screenshotUrl;
-        // link.download = 'screenshot.png';
-        // link.click();
-      } else {
-        console.log('Screenshot URL is empty.');
+    chrome.runtime.sendMessage({ action: 'captureScreenshot' }, (response) => {
+      if (response.screenshotUrl) {
+        setScreenshot(response.screenshotUrl);
+        setActiveTab('screenshot');
       }
     });
-  }
+  };
 
-  const getActiveTabUrl = async (): Promise<string> => {
+  const getActiveTabUrl = async () => {
     return new Promise((resolve, reject) => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs.length > 0 && tabs[0].url) {
-          resolve(tabs[0].url)
+          resolve(tabs[0].url);
         } else {
-          reject(new Error('Unable to fetch the active tab URL.'))
+          reject(new Error('Unable to fetch the active tab URL.'));
         }
-      })
-    })
-  }
+      });
+    });
+  };
+
   const handleScreenshot = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       if (!screenshot) {
-        console.error('No screenshot available.')
-        return
+        console.error('No screenshot available.');
+        return;
       }
-      const base64Image = screenshot.split(',')[1]
-      const response = await fetch('http://localhost:5000/screenshot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image }),
-      })
-      const data = await response.json()
-      console.log('Text extracted from the image:', data.text)
+
+      // @ts-ignore
+      const base64Image = screenshot.split(',')[1];
+      const response = await axios.post('http://localhost:8080/screenshot', {
+        image: base64Image
+      });
+      const data = await response.data;
       if (data) {
-        setExtractedText(data.text)
+        setExtractedText(data.text);
+        setActiveTab('extracted');
       } else {
-        setExtractedText('no data available')
+        setExtractedText('No data available');
       }
     } catch (error) {
-      console.error('Error sending screenshot:', error)
+      console.error('Error sending screenshot:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleSummarize = async () => {
     try {
-      const activeTabUrl = await getActiveTabUrl()
-      setUrl(activeTabUrl)
-      setLoading(true)
-      const response = await fetch('http://localhost:5000/summarize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: activeTabUrl, length }),
-      })
-      const data: { summary: string } = await response.json()
-      setSummary(data.summary)
+      const activeTabUrl = await getActiveTabUrl();
+
+      // @ts-ignore
+      setUrl(activeTabUrl);
+      setLoading(true);
+      const response = await axios.post('http://localhost:8080/summarize', {
+        url: activeTabUrl,
+        length
+      });
+      const data = await response.data;
+      setSummary(data.summary);
+      setActiveTab('summary');
     } catch (error) {
-      console.error('Error fetching the summary:', error)
+      console.error('Error fetching the summary:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="container">
-      <h1 className="heading">SummarEase</h1>
-      <div className="form">
-        <label htmlFor="length" className="label">
-          Select Summary Length:
-        </label>
-        <select id="length" value={length} onChange={(e) => setLength(e.target.value)} className="select">
-          <option value="short">Short</option>
-          <option value="medium">Medium</option>
-          <option value="large">Large</option>
-        </select>
-        <button onClick={handleSummarize} className="button">
+    <div className="h-screen flex flex-col bg-gray-50">
+      <div className="flex items-center justify-between p-4 border-b bg-white">
+        <h1 className="text-lg font-semibold">SummarEase</h1>
+        <Select value={length} onValueChange={setLength}>
+          <SelectTrigger className="w-24">
+            <SelectValue placeholder="Length" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="short">Short</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="large">Large</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex space-x-1 p-2 bg-white border-b">
+        <Button
+          onClick={handleSummarize}
+          disabled={loading}
+          className="flex-1 h-8 text-xs"
+        >
+          {loading ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <FileText className="w-3 h-3 mr-1" />}
           Summarize
-        </button>
-        <button onClick={takeScreenshot} className="button" style={{ marginLeft: '10px' }}>
-          Capture Screenshot
-        </button>
-        <button onClick={handleScreenshot} className="button">
-          Extract Text
-        </button>
+        </Button>
+        <Button
+          onClick={takeScreenshot}
+          variant="outline"
+          className="flex-1 h-8 text-xs"
+        >
+          <Camera className="w-3 h-3 mr-1" />
+          Screenshot
+        </Button>
+        <Button
+          onClick={handleScreenshot}
+          disabled={!screenshot || loading}
+          className="flex-1 h-8 text-xs"
+        >
+          <FileSearch className="w-3 h-3 mr-1" />
+          Extract
+        </Button>
       </div>
-      <div className="output">
-        <p>
-          <strong>URL:</strong> {url}
-        </p>
-        {loading ? (
-          <div className="loader">
-            <TailSpin height="50" width="50" color="#4fa94d" ariaLabel="loading" />
-          </div>
-        ) : (
-          <p>
-            <strong>Summary:</strong>
-            <ReactMarkdown rehypePlugins={[rehypeRaw]}>{summary}</ReactMarkdown>
-          </p>
-        )}
-      </div>
-      <div className="output">
-        {extractedText && (
-          <p>
-            <strong>Extracted Text:</strong>
-            <ReactMarkdown rehypePlugins={[rehypeRaw]}>{extractedText}</ReactMarkdown>
-          </p>
-        )}
-      </div>
-      <div className="output">
-        {screenshot && (
-          <>
-            <p>
-              <strong>Captured Screenshot:</strong>
-            </p>
-            <img src={screenshot} alt="Captured Screenshot" style={{ maxWidth: '100%', border: '1px solid #ccc' }} />
-          </>
-        )}
-      </div>
+
+      {url && (
+        <div className="px-4 py-2 text-xs text-gray-500 bg-gray-50 border-b truncate">
+          {url}
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <TabsList className="px-2 h-9 bg-gray-50 border-b">
+          <TabsTrigger value="summary" className="text-xs">Summary</TabsTrigger>
+          <TabsTrigger value="extracted" className="text-xs">Extracted Text</TabsTrigger>
+          <TabsTrigger value="screenshot" className="text-xs">Screenshot</TabsTrigger>
+        </TabsList>
+
+        <div className="flex-1 overflow-auto">
+          <TabsContent value="summary" className="p-4 h-full">
+            {loading ? (
+              <div className="flex justify-center p-4">
+                <Loader2 className="w-6 h-6 animate-spin" />
+              </div>
+            ) : summary ? (
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{summary}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-center text-sm text-gray-500">No summary available</p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="extracted" className="p-4 h-full">
+            {extractedText ? (
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown rehypePlugins={[rehypeRaw]}>{extractedText}</ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-center text-sm text-gray-500">No extracted text available</p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="screenshot" className="h-full">
+            {screenshot ? (
+              <div className="p-2">
+                <img
+                  src={screenshot}
+                  alt="Captured Screenshot"
+                  className="w-full rounded border border-gray-200"
+                />
+              </div>
+            ) : (
+              <p className="text-center text-sm text-gray-500 p-4">No screenshot available</p>
+            )}
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
-  )
+  );
 }
