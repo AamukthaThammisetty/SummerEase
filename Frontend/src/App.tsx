@@ -58,27 +58,33 @@ export default function App() {
   }
 
   const handletext = async () => {
+    if (!screenshotUrl) {
+      console.error('No screenshot available. Please capture a screenshot first.')
+      return
+    }
+
     try {
       setLoading(true)
-      if (!screenshotUrl) {
-        console.error('No screenshot available.')
-        return
-      }
 
-      // @ts-ignore
+      // Extracting the base64 portion from the screenshot URL
       const base64Image = screenshotUrl.split(',')[1]
+
+      // Sending the base64 image to the backend
       const response = await axios.post('http://localhost:8080/screenshot', {
         image: base64Image,
       })
-      const data = await response.data
-      if (data) {
+
+      const data = response.data
+
+      if (data && data.text) {
         setExtractedText(data.text)
         setActiveTab('extracted')
       } else {
-        setExtractedText('No data available')
+        setExtractedText('No text extracted from the image.')
       }
     } catch (error) {
-      console.error('Error sending screenshot:', error)
+      console.error('Error sending screenshot for text extraction:', error)
+      setExtractedText('Error extracting text. Please try again.')
     } finally {
       setLoading(false)
     }

@@ -79,12 +79,11 @@ def process_screenshot():
         # Decode the base64 image
         image_data = base64.b64decode(image_base64)
 
-        # Send image data to Gemini for processing
-        prompt = "Describe the contents of this image."
-        response = model.generate_content([{
-            "mime_type": "image/jpeg", 
-            "data": image_data
-        }, prompt])
+        # Send image data to Gemini for processing (fixed MIME type and data handling)
+        response = model.generate_content([
+            {"mime_type": "image/png", "data": image_data},
+            "Describe the contents of this image."
+        ])
 
         # Debug: Log the response
         print("Model response:", response)
@@ -94,6 +93,7 @@ def process_screenshot():
     except Exception as e:
         print("Error processing screenshot:", e)  # Log error for debugging
         return jsonify({"error": str(e)}), 500
+
 
     
 
