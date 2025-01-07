@@ -4,3 +4,4 @@ transformers
 pytest
 flask
 google-generativeai
+flask_cors
