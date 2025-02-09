@@ -10,13 +10,19 @@ import { Loader2, FileText, Camera, FileSearch } from 'lucide-react'
 export default function App() {
   const [summary, setSummary] = useState('')
   const [length, setLength] = useState('short')
+  const [question, setQuestion] = useState('')
   const [url, setUrl] = useState('')
+  // const [response, setResponse] = useState('')
   const [loading, setLoading] = useState(false)
   const [extractedText, setExtractedText] = useState('')
+  const [messages, setMessages] = useState<{ role: string; content: string }[]>([])
   // const [screenshot, setScreenshot] = useState(null)
   const [activeTab, setActiveTab] = useState('summary')
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null)
-
+  type Message = {
+    role: string
+    content: string
+  }
   const handleScreenshot = async () => {
     try {
       if (!chrome || !chrome.tabs || !chrome.tabs.captureVisibleTab) {
@@ -57,25 +63,74 @@ export default function App() {
     })
   }
 
+  const generateAnswer = async () => {
+    try {
+      setLoading(true)
+
+      // Send only the latest question (not the entire message history)
+      const updatedMessages: Message[] = [{ role: 'user', content: question }]
+      setMessages((prevMessages) => [...prevMessages, ...updatedMessages])
+
+      // Send the latest message (just the question) to the API
+      const response = await axios.post('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDY3HG8xMfPLcOSgIpiEzE029G1Govzi-4', {
+        contents: updatedMessages.map((msg) => ({ parts: [{ text: msg.content }] })),
+      })
+
+      const textResponse = response.data?.candidates?.[0]?.content?.parts?.[0]?.text
+
+      if (textResponse) {
+        // Add the assistant's response to the messages array
+        setMessages((prevMessages) => [...prevMessages, { role: 'assistant', content: textResponse }])
+      }
+
+      setQuestion('') // Clear the question input after sending
+    } catch (error) {
+      console.error('Error generating answer:', JSON.stringify(error, null, 2))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // const generateAnswer = async () => {
+  //   try {
+  //     setLoading(true)
+  //     const response = await axios({
+  //       url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDY3HG8xMfPLcOSgIpiEzE029G1Govzi-4',
+  //       method: 'post',
+  //       data: {
+  //         contents: [{ parts: [{ text: question }] }],
+  //       },
+  //     })
+
+  //     // Corrected the response structure
+  //     const textResponse = response.data?.candidates?.[0]?.content?.parts?.[0]?.text
+  //     setAnswer(textResponse)
+  //     if (textResponse) {
+  //       console.log(textResponse)
+  //     } else {
+  //       console.error('No valid text received from the response.')
+  //     }
+  //   } catch (error) {
+  //     console.error('Error generating answer:', error)
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
+
   const handletext = async () => {
     if (!screenshotUrl) {
       console.error('No screenshot available. Please capture a screenshot first.')
       return
     }
-
     try {
       setLoading(true)
-
       // Extracting the base64 portion from the screenshot URL
       const base64Image = screenshotUrl.split(',')[1]
-
       // Sending the base64 image to the backend
       const response = await axios.post('http://localhost:8080/screenshot', {
         image: base64Image,
       })
-
       const data = response.data
-
       if (data && data.text) {
         setExtractedText(data.text)
         setActiveTab('extracted')
@@ -155,6 +210,9 @@ export default function App() {
           <TabsTrigger value="screenshot" className="text-xs">
             Screenshot
           </TabsTrigger>
+          <TabsTrigger value="chatbot" className="text-xs">
+            chatbot
+          </TabsTrigger>
         </TabsList>
 
         <div className="flex-1 overflow-auto">
@@ -190,6 +248,50 @@ export default function App() {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="chatbot" className="p-6 flex flex-col h-[80vh]">
+
+{/* Chat Messages Section (Scrollable) */}
+<div className="flex-grow overflow-y-auto space-y-4 p-4 mb-[70px]">
+  {messages.map((msg, index) => (
+    <div
+      key={index}
+      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} space-x-2`}
+    >
+      <div
+        className={`text-lg p-2 max-w-[70%] ${msg.role === 'user' ? 'bg-blue-200 rounded-l-xl' : 'bg-gray-200 rounded-r-xl'}`}
+      >
+        <ReactMarkdown rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
+      </div>
+    </div>
+  ))}
+</div>
+
+{/* Textarea and Button (Fixed at Bottom) */}
+<div className="flex items-center gap-4 border-t p-3 bg-white fixed bottom-0 left-0 w-full z-10">
+  <textarea
+    value={question}
+    onChange={(e) => setQuestion(e.target.value)}
+    cols={30}
+    rows={2}
+    placeholder="Type your question here..."
+    className="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+  ></textarea>
+
+  <Button
+    onClick={generateAnswer}
+    disabled={loading}
+    className={`px-6 py-3 font-semibold rounded-lg transition-all duration-300 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+  >
+    {loading ? 'Sending...' : 'Send'}
+  </Button>
+</div>
+</TabsContent>
+
+
+
+
+
         </div>
       </Tabs>
     </div>

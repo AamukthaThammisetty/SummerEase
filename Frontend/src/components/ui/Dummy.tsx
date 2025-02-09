@@ -6,13 +6,10 @@ const Dummy = () => {
 
   const handleScreenshot = async () => {
     try {
-      // Ensure the Chrome extension environment is available
       if (!chrome || !chrome.tabs || !chrome.tabs.captureVisibleTab) {
         console.error('Chrome extension API not available.')
         return
       }
-
-      // Capture the visible tab directly
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
       chrome.tabs.captureVisibleTab(tab.windowId, { format: 'png' }, (dataUrl) => {
         if (chrome.runtime.lastError) {
